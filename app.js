@@ -579,11 +579,14 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('save-firebase-config-btn').addEventListener('click', () => {
     const raw = document.getElementById('firebase-config-textarea').value.trim();
     try {
-      // "const firebaseConfig = {...}" 形式でも "{...}" 形式でも両対応
       const match = raw.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error('JSONが見つかりません');
-      const config = JSON.parse(match[0]);
-      if (!config.apiKey || !config.projectId) throw new Error('必須項目が不足しています');
+      if (!match) throw new Error('設定が見つかりません');
+      // JS形式（キー未クォート）→ JSON形式に変換
+      const jsonStr = match[0]
+        .replace(/([{,][\s\n\r]*)(\w+)(\s*:)/g, '$1"$2"$3')
+        .replace(/'/g, '"');
+      const config = JSON.parse(jsonStr);
+      if (!config.apiKey || !config.projectId) throw new Error('apiKeyまたはprojectIdが見つかりません');
       localStorage.setItem('takken_firebase_config', JSON.stringify(config));
       alert('Firebase設定を保存しました。ページを再読み込みします。');
       location.reload();
