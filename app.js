@@ -581,11 +581,9 @@ window.addEventListener('DOMContentLoaded', () => {
     try {
       const match = raw.match(/\{[\s\S]*\}/);
       if (!match) throw new Error('設定が見つかりません');
-      // JS形式（キー未クォート）→ JSON形式に変換
-      const jsonStr = match[0]
-        .replace(/([{,][\s\n\r]*)(\w+)(\s*:)/g, '$1"$2"$3')
-        .replace(/'/g, '"');
-      const config = JSON.parse(jsonStr);
+      // JS オブジェクト形式をそのまま評価（Firebaseコンソールからのコピーに対応）
+      // eslint-disable-next-line no-new-func
+      const config = Function('return (' + match[0] + ')')();
       if (!config.apiKey || !config.projectId) throw new Error('apiKeyまたはprojectIdが見つかりません');
       localStorage.setItem('takken_firebase_config', JSON.stringify(config));
       alert('Firebase設定を保存しました。ページを再読み込みします。');
