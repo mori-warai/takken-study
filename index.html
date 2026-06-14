@@ -28,29 +28,8 @@
   <div class="login-wrap">
     <div style="font-size:64px;margin-bottom:16px;">📝</div>
     <h2 style="font-size:22px;color:#1e3a5f;margin-bottom:8px;">宅建学習アプリ</h2>
-    <p style="color:#718096;font-size:14px;margin-bottom:8px;">データをクラウドに保存して<br>スマホ・PCどこからでも学習できます</p>
-
-    <div id="login-firebase-setup" style="display:none;">
-      <div class="card" style="text-align:left;margin-bottom:16px;">
-        <h2>🔥 Firebase設定</h2>
-        <p style="font-size:13px;color:#718096;margin-bottom:8px;">Firebaseコンソールのプロジェクト設定から<br>「firebaseConfig」の内容をそのまま貼り付けてください</p>
-        <textarea id="firebase-config-textarea" rows="7" style="width:100%;font-size:12px;padding:8px;border:2px solid #e2e8f0;border-radius:8px;font-family:monospace;" placeholder='{
-  "apiKey": "...",
-  "authDomain": "...",
-  "projectId": "...",
-  "storageBucket": "...",
-  "messagingSenderId": "...",
-  "appId": "..."
-}'></textarea>
-        <button class="btn btn-primary" id="save-firebase-config-btn" style="margin-top:8px;">設定を保存してログイン画面へ</button>
-      </div>
-    </div>
-
-    <div id="login-buttons">
-      <button class="btn btn-primary" id="login-btn" style="font-size:16px;padding:16px;">🔵 Googleでログイン</button>
-      <button class="btn btn-outline" id="setup-firebase-btn">Firebase設定を変更する</button>
-    </div>
-
+    <p style="color:#718096;font-size:14px;margin-bottom:24px;">データをクラウドに保存して<br>スマホ・PCどこからでも学習できます</p>
+    <button class="btn btn-primary" id="login-btn" style="font-size:16px;padding:16px;">🔵 Googleでログイン</button>
     <p id="login-error" style="color:#e74c3c;font-size:13px;margin-top:12px;display:none;"></p>
   </div>
 </div>
@@ -299,7 +278,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-
+<script src="firebase-config.js"></script>
 <script src="questions.js"></script>
 <script src="app.js"></script>
 </body>

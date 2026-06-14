@@ -35,21 +35,9 @@ function saveData(d) {
 }
 
 // ===== FIREBASE =====
-function getFirebaseConfig() {
-  try {
-    const str = localStorage.getItem('takken_firebase_config');
-    return str ? JSON.parse(str) : null;
-  } catch { return null; }
-}
-
 function initFirebase() {
-  const config = getFirebaseConfig();
-  if (!config) {
-    showLoginScreen(false);
-    return;
-  }
   try {
-    if (!firebase.apps.length) firebase.initializeApp(config);
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     firebase.auth().onAuthStateChanged(async user => {
       if (user) {
         STATE.user = user;
@@ -57,12 +45,12 @@ function initFirebase() {
         showAppScreen();
       } else {
         STATE.user = null;
-        showLoginScreen(true);
+        showLoginScreen();
       }
     });
   } catch (e) {
     console.error('Firebase初期化エラー:', e);
-    showLoginScreen(false);
+    showLoginScreen();
   }
 }
 
@@ -100,19 +88,11 @@ async function signOut() {
   STATE.user = null;
 }
 
-function showLoginScreen(firebaseReady) {
+function showLoginScreen() {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-login').classList.add('active');
   document.getElementById('bottom-nav').style.display = 'none';
   document.getElementById('logout-btn').style.display = 'none';
-
-  if (firebaseReady) {
-    document.getElementById('login-firebase-setup').style.display = 'none';
-    document.getElementById('login-buttons').style.display = 'block';
-  } else {
-    document.getElementById('login-firebase-setup').style.display = 'block';
-    document.getElementById('login-buttons').style.display = 'none';
-  }
 }
 
 function showAppScreen() {
@@ -571,27 +551,6 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('login-btn').addEventListener('click', signInWithGoogle);
   document.getElementById('logout-btn').addEventListener('click', signOut);
 
-  document.getElementById('setup-firebase-btn').addEventListener('click', () => {
-    document.getElementById('login-firebase-setup').style.display = 'block';
-    document.getElementById('login-buttons').style.display = 'none';
-  });
-
-  document.getElementById('save-firebase-config-btn').addEventListener('click', () => {
-    const raw = document.getElementById('firebase-config-textarea').value.trim();
-    try {
-      // apiKey を含む {...} ブロックだけを抽出（importや他のコードが混在しても対応）
-      const match = raw.match(/\{[^{}]*apiKey[^{}]*\}/);
-      if (!match) throw new Error('firebaseConfigが見つかりません');
-      // eslint-disable-next-line no-new-func
-      const config = Function('return (' + match[0] + ')')();
-      if (!config.apiKey || !config.projectId) throw new Error('apiKeyまたはprojectIdが見つかりません');
-      localStorage.setItem('takken_firebase_config', JSON.stringify(config));
-      alert('Firebase設定を保存しました。ページを再読み込みします。');
-      location.reload();
-    } catch (e) {
-      alert('設定の形式が正しくありません: ' + e.message);
-    }
-  });
 
   // Service Worker
   if ('serviceWorker' in navigator) {
