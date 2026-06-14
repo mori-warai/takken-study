@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>宅建 学習アプリ｜WARAI INC.</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e3a5f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="宅建">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -218,6 +225,16 @@
   </div>
 
   <button class="btn btn-primary" id="save-settings-btn">設定を保存</button>
+
+  <div class="card">
+    <h2>💾 データのバックアップ</h2>
+    <p style="font-size:13px;color:#718096;margin-bottom:12px;">iOSでは定期的にデータが消えることがあります。月1回ほどエクスポートしておくと安心です。</p>
+    <button class="btn btn-outline" id="export-btn">📥 データをエクスポート（JSON保存）</button>
+    <label class="btn btn-outline" style="text-align:center;cursor:pointer;display:block;">
+      📤 データをインポート（JSON読み込み）
+      <input type="file" id="import-input" accept=".json" style="display:none">
+    </label>
+  </div>
 
   <div class="card" style="border:2px solid #e74c3c;">
     <h2 style="color:#e74c3c;">⚠️ データのリセット</h2>

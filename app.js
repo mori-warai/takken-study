@@ -442,6 +442,37 @@ function resetAllData() {
   showScreen('home');
 }
 
+function exportData() {
+  const d = loadData();
+  const json = JSON.stringify(d, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'takken_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if (!d.history || !d.wrongIds) throw new Error('invalid');
+      saveData(d);
+      alert('データを読み込みました。履歴: ' + d.history.length + '件');
+      showScreen('home');
+    } catch {
+      alert('ファイルの形式が正しくありません。');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
 // ===== INIT =====
 window.addEventListener('DOMContentLoaded', () => {
   // Nav
@@ -471,6 +502,13 @@ window.addEventListener('DOMContentLoaded', () => {
   // Settings
   document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
   document.getElementById('reset-btn').addEventListener('click', resetAllData);
+  document.getElementById('export-btn').addEventListener('click', exportData);
+  document.getElementById('import-input').addEventListener('change', importData);
 
   showScreen('home');
+
+  // Service Worker 登録
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/takken-study/sw.js').catch(() => {});
+  }
 });
