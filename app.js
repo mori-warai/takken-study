@@ -579,9 +579,9 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('save-firebase-config-btn').addEventListener('click', () => {
     const raw = document.getElementById('firebase-config-textarea').value.trim();
     try {
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error('設定が見つかりません');
-      // JS オブジェクト形式をそのまま評価（Firebaseコンソールからのコピーに対応）
+      // apiKey を含む {...} ブロックだけを抽出（importや他のコードが混在しても対応）
+      const match = raw.match(/\{[^{}]*apiKey[^{}]*\}/);
+      if (!match) throw new Error('firebaseConfigが見つかりません');
       // eslint-disable-next-line no-new-func
       const config = Function('return (' + match[0] + ')')();
       if (!config.apiKey || !config.projectId) throw new Error('apiKeyまたはprojectIdが見つかりません');
