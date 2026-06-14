@@ -1,26 +1,124 @@
 // ===== STATE =====
 const STATE = {
   screen: 'home',
-  session: null,      // 現在のセッション
+  session: null,
   timerInterval: null,
   elapsedSec: 0,
+  user: null,
 };
 
 const CATEGORIES = ["宅建業法", "権利関係", "法令上の制限", "税・その他"];
 
-// ===== STORAGE =====
+const DEFAULT_DATA = {
+  history: [],
+  wrongIds: {},
+  apiKey: '',
+  dailyGoal: 20,
+  streakDays: 0,
+  lastStudyDate: '',
+};
+
+// ===== STORAGE（localStorageをキャッシュ、Firestoreを正とする） =====
 function loadData() {
-  return JSON.parse(localStorage.getItem('takken_data') || JSON.stringify({
-    history: [],       // セッション履歴
-    wrongIds: {},      // {id: 間違え回数}
-    apiKey: '',
-    dailyGoal: 20,
-    streakDays: 0,
-    lastStudyDate: '',
-  }));
+  return JSON.parse(localStorage.getItem('takken_data') || JSON.stringify(DEFAULT_DATA));
 }
+
 function saveData(d) {
   localStorage.setItem('takken_data', JSON.stringify(d));
+  // Firestoreにも非同期で保存
+  if (STATE.user && firebase.apps.length) {
+    firebase.firestore()
+      .doc(`users/${STATE.user.uid}/takken/data`)
+      .set(d)
+      .catch(e => console.warn('Firestore保存エラー:', e));
+  }
+}
+
+// ===== FIREBASE =====
+function getFirebaseConfig() {
+  try {
+    const str = localStorage.getItem('takken_firebase_config');
+    return str ? JSON.parse(str) : null;
+  } catch { return null; }
+}
+
+function initFirebase() {
+  const config = getFirebaseConfig();
+  if (!config) {
+    showLoginScreen(false);
+    return;
+  }
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    firebase.auth().onAuthStateChanged(async user => {
+      if (user) {
+        STATE.user = user;
+        await loadFromFirestore(user.uid);
+        showAppScreen();
+      } else {
+        STATE.user = null;
+        showLoginScreen(true);
+      }
+    });
+  } catch (e) {
+    console.error('Firebase初期化エラー:', e);
+    showLoginScreen(false);
+  }
+}
+
+async function loadFromFirestore(uid) {
+  try {
+    const snap = await firebase.firestore().doc(`users/${uid}/takken/data`).get();
+    if (snap.exists) {
+      const data = snap.data();
+      // apiKeyはこの端末のlocalStorageを優先（セキュリティ上）
+      const localApiKey = loadData().apiKey;
+      if (localApiKey) data.apiKey = localApiKey;
+      localStorage.setItem('takken_data', JSON.stringify(data));
+    }
+  } catch (e) {
+    console.warn('Firestore読み込みエラー:', e);
+  }
+}
+
+async function signInWithGoogle() {
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await firebase.auth().signInWithPopup(provider);
+    // onAuthStateChanged が自動で次の処理を行う
+  } catch (e) {
+    errEl.textContent = 'ログインに失敗しました: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function signOut() {
+  if (!confirm('ログアウトしますか？')) return;
+  await firebase.auth().signOut();
+  STATE.user = null;
+}
+
+function showLoginScreen(firebaseReady) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-login').classList.add('active');
+  document.getElementById('bottom-nav').style.display = 'none';
+  document.getElementById('logout-btn').style.display = 'none';
+
+  if (firebaseReady) {
+    document.getElementById('login-firebase-setup').style.display = 'none';
+    document.getElementById('login-buttons').style.display = 'block';
+  } else {
+    document.getElementById('login-firebase-setup').style.display = 'block';
+    document.getElementById('login-buttons').style.display = 'none';
+  }
+}
+
+function showAppScreen() {
+  document.getElementById('bottom-nav').style.display = 'flex';
+  document.getElementById('logout-btn').style.display = 'block';
+  showScreen('home');
 }
 
 // ===== SCREEN NAVIGATION =====
@@ -41,18 +139,15 @@ function renderHome() {
   const d = loadData();
   updateStreak(d);
 
-  // Stats
   const total = d.history.reduce((s, h) => s + h.total, 0);
   const correct = d.history.reduce((s, h) => s + h.correct, 0);
   const rate = total > 0 ? Math.round(correct / total * 100) : 0;
-  const sessions = d.history.length;
 
   document.getElementById('stat-total').textContent = total;
   document.getElementById('stat-rate').textContent = rate + '%';
-  document.getElementById('stat-sessions').textContent = sessions;
+  document.getElementById('stat-sessions').textContent = d.history.length;
   document.getElementById('stat-streak').textContent = d.streakDays + '日';
 
-  // Category bars
   const catDiv = document.getElementById('cat-bars');
   catDiv.innerHTML = '';
   CATEGORIES.forEach(cat => {
@@ -75,12 +170,6 @@ function renderHome() {
 function updateStreak(d) {
   const today = new Date().toLocaleDateString('ja-JP');
   if (d.lastStudyDate === today) return;
-  const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('ja-JP');
-  if (d.lastStudyDate === yesterday) {
-    d.streakDays++;
-  } else if (d.lastStudyDate !== today) {
-    // 今日初めて開いた場合はストリークをリセットしない（学習完了時に更新）
-  }
 }
 
 // ===== SESSION START =====
@@ -89,7 +178,6 @@ let selectedCat = '';
 let selectedCount = 10;
 
 function initModeSelect() {
-  // モード選択（count-btn は除外）
   document.querySelectorAll('.mode-btn:not(.count-btn)').forEach(b => {
     b.addEventListener('click', () => {
       document.querySelectorAll('.mode-btn:not(.count-btn)').forEach(x => x.classList.remove('selected'));
@@ -98,7 +186,6 @@ function initModeSelect() {
       selectedCat  = b.dataset.cat  || '';
     });
   });
-  // 問題数選択
   document.querySelectorAll('.count-btn').forEach(b => {
     b.addEventListener('click', () => {
       document.querySelectorAll('.count-btn').forEach(x => x.classList.remove('selected'));
@@ -128,7 +215,6 @@ function startSession() {
     pool = QUESTIONS.filter(q => q.category === selectedCat);
   }
 
-  // Shuffle & slice
   pool = shuffle(pool).slice(0, selectedCount);
 
   STATE.session = {
@@ -196,36 +282,26 @@ function selectAnswer(idx) {
   const q = s.questions[s.current];
   const correct = idx === q.ans;
 
-  // Disable all options
   document.querySelectorAll('.option-btn').forEach((btn, i) => {
     btn.disabled = true;
     if (i === q.ans) btn.classList.add('correct');
     else if (i === idx && !correct) btn.classList.add('wrong');
   });
 
-  // Feedback
   const fb = document.getElementById('answer-feedback');
   fb.style.cssText = '';
   fb.style.display = 'block';
-  if (correct) {
-    fb.textContent = '⭕ 正解！';
-    fb.className = 'correct';
-  } else {
-    fb.textContent = '❌ 不正解';
-    fb.className = 'wrong';
-  }
+  fb.textContent = correct ? '⭕ 正解！' : '❌ 不正解';
+  fb.className = correct ? 'correct' : 'wrong';
 
-  // Explanation
   const exp = document.getElementById('explanation-box');
   exp.style.display = 'block';
   exp.className = correct ? 'correct-exp' : 'wrong-exp';
   document.getElementById('explanation-label').textContent = correct ? '✅ 解説' : '📖 解説（正解: ' + ['A','B','C','D'][q.ans] + '）';
   document.getElementById('explanation-text').textContent = q.exp;
 
-  // Record
   s.answers.push({ id: q.id, correct, category: q.category });
 
-  // Update wrong count
   const d = loadData();
   if (!correct) {
     d.wrongIds[q.id] = (d.wrongIds[q.id] || 0) + 1;
@@ -253,7 +329,6 @@ function finishSession() {
   const correct = s.answers.filter(a => a.correct).length;
   const total = s.answers.length;
 
-  // Save to history
   const d = loadData();
   const today = new Date().toLocaleDateString('ja-JP');
   if (d.lastStudyDate !== today) {
@@ -272,22 +347,16 @@ function finishSession() {
   if (d.history.length > 50) d.history = d.history.slice(0, 50);
   saveData(d);
 
-  // Render result
   document.getElementById('result-score-num').textContent = correct;
   document.getElementById('result-score-denom').textContent = '/ ' + total;
 
   const pct = Math.round(correct / total * 100);
-  let msg = '';
-  if (pct >= 80) msg = '🎉 素晴らしい！';
-  else if (pct >= 60) msg = '👍 良い調子！';
-  else msg = '💪 次は挑戦！';
+  let msg = pct >= 80 ? '🎉 素晴らしい！' : pct >= 60 ? '👍 良い調子！' : '💪 次は挑戦！';
   document.getElementById('result-msg').textContent = msg + ' 正答率 ' + pct + '%';
 
-  const elapsed = STATE.elapsedSec;
-  const em = Math.floor(elapsed / 60), es = elapsed % 60;
+  const em = Math.floor(STATE.elapsedSec / 60), es = STATE.elapsedSec % 60;
   document.getElementById('result-time').textContent = `学習時間: ${em}分${es}秒`;
 
-  // Per-category result
   const rcDiv = document.getElementById('result-cats');
   rcDiv.innerHTML = '';
   CATEGORIES.forEach(cat => {
@@ -301,7 +370,6 @@ function finishSession() {
       </div>`;
   });
 
-  // Wrong list
   const wrongAns = s.answers.filter(a => !a.correct);
   const wDiv = document.getElementById('result-wrongs');
   wDiv.innerHTML = '';
@@ -398,7 +466,6 @@ function renderHistory() {
     return;
   }
 
-  // Overall stats
   const totalQ = d.history.reduce((s, h) => s + h.total, 0);
   const totalC = d.history.reduce((s, h) => s + h.correct, 0);
   document.getElementById('hist-total').textContent = totalQ + '問';
@@ -438,6 +505,9 @@ function saveSettings() {
 function resetAllData() {
   if (!confirm('全ての学習データをリセットしますか？この操作は取り消せません。')) return;
   localStorage.removeItem('takken_data');
+  if (STATE.user && firebase.apps.length) {
+    firebase.firestore().doc(`users/${STATE.user.uid}/takken/data`).delete().catch(() => {});
+  }
   alert('リセットしました。');
   showScreen('home');
 }
@@ -483,32 +553,50 @@ window.addEventListener('DOMContentLoaded', () => {
   // Mode select
   initModeSelect();
 
-  // Start btn
+  // Buttons
   document.getElementById('start-btn').addEventListener('click', startSession);
-
-  // Next btn
   document.getElementById('next-btn').addEventListener('click', nextQuestion);
-
-  // AI btn
   document.getElementById('ai-btn').addEventListener('click', getAIFeedback);
-
-  // Home btn from result
   document.getElementById('result-home-btn').addEventListener('click', () => showScreen('home'));
   document.getElementById('result-retry-btn').addEventListener('click', () => {
     showScreen('home');
     setTimeout(() => showScreen('start'), 50);
   });
-
-  // Settings
   document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
   document.getElementById('reset-btn').addEventListener('click', resetAllData);
   document.getElementById('export-btn').addEventListener('click', exportData);
   document.getElementById('import-input').addEventListener('change', importData);
 
-  showScreen('home');
+  // Login
+  document.getElementById('login-btn').addEventListener('click', signInWithGoogle);
+  document.getElementById('logout-btn').addEventListener('click', signOut);
 
-  // Service Worker 登録
+  document.getElementById('setup-firebase-btn').addEventListener('click', () => {
+    document.getElementById('login-firebase-setup').style.display = 'block';
+    document.getElementById('login-buttons').style.display = 'none';
+  });
+
+  document.getElementById('save-firebase-config-btn').addEventListener('click', () => {
+    const raw = document.getElementById('firebase-config-textarea').value.trim();
+    try {
+      // "const firebaseConfig = {...}" 形式でも "{...}" 形式でも両対応
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('JSONが見つかりません');
+      const config = JSON.parse(match[0]);
+      if (!config.apiKey || !config.projectId) throw new Error('必須項目が不足しています');
+      localStorage.setItem('takken_firebase_config', JSON.stringify(config));
+      alert('Firebase設定を保存しました。ページを再読み込みします。');
+      location.reload();
+    } catch (e) {
+      alert('設定の形式が正しくありません: ' + e.message);
+    }
+  });
+
+  // Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/takken-study/sw.js').catch(() => {});
   }
+
+  // Firebase初期化
+  initFirebase();
 });

@@ -275,6 +275,15 @@ header .streak { font-size: 13px; background: #f39c12; padding: 4px 10px; border
 .history-date { color: #718096; font-size: 12px; }
 .history-score { font-weight: 700; color: #1e3a5f; }
 
+/* ===== LOGIN ===== */
+.login-wrap {
+  max-width: 400px;
+  margin: 60px auto 0;
+  text-align: center;
+  padding: 0 20px;
+}
+.login-wrap .btn { margin-bottom: 12px; }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 400px) {
   .stats-grid { grid-template-columns: 1fr 1fr; }

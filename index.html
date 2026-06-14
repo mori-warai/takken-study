@@ -17,11 +17,46 @@
 
 <header>
   <h1>📝 宅建 学習アプリ</h1>
-  <span class="streak" id="header-streak">🔥 0日連続</span>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span class="streak" id="header-streak">🔥 0日連続</span>
+    <button id="logout-btn" style="display:none;background:rgba(255,255,255,0.2);border:none;color:white;font-size:12px;padding:4px 10px;border-radius:20px;cursor:pointer;">ログアウト</button>
+  </div>
 </header>
 
+<!-- ===== LOGIN ===== -->
+<div id="screen-login" class="screen active pb-safe">
+  <div class="login-wrap">
+    <div style="font-size:64px;margin-bottom:16px;">📝</div>
+    <h2 style="font-size:22px;color:#1e3a5f;margin-bottom:8px;">宅建学習アプリ</h2>
+    <p style="color:#718096;font-size:14px;margin-bottom:8px;">データをクラウドに保存して<br>スマホ・PCどこからでも学習できます</p>
+
+    <div id="login-firebase-setup" style="display:none;">
+      <div class="card" style="text-align:left;margin-bottom:16px;">
+        <h2>🔥 Firebase設定</h2>
+        <p style="font-size:13px;color:#718096;margin-bottom:8px;">Firebaseコンソールのプロジェクト設定から<br>「firebaseConfig」の内容をそのまま貼り付けてください</p>
+        <textarea id="firebase-config-textarea" rows="7" style="width:100%;font-size:12px;padding:8px;border:2px solid #e2e8f0;border-radius:8px;font-family:monospace;" placeholder='{
+  "apiKey": "...",
+  "authDomain": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'></textarea>
+        <button class="btn btn-primary" id="save-firebase-config-btn" style="margin-top:8px;">設定を保存してログイン画面へ</button>
+      </div>
+    </div>
+
+    <div id="login-buttons">
+      <button class="btn btn-primary" id="login-btn" style="font-size:16px;padding:16px;">🔵 Googleでログイン</button>
+      <button class="btn btn-outline" id="setup-firebase-btn">Firebase設定を変更する</button>
+    </div>
+
+    <p id="login-error" style="color:#e74c3c;font-size:13px;margin-top:12px;display:none;"></p>
+  </div>
+</div>
+
 <!-- ===== HOME ===== -->
-<div id="screen-home" class="screen active pb-safe">
+<div id="screen-home" class="screen pb-safe">
 
   <div class="stats-grid">
     <div class="stat-box">
@@ -228,7 +263,7 @@
 
   <div class="card">
     <h2>💾 データのバックアップ</h2>
-    <p style="font-size:13px;color:#718096;margin-bottom:12px;">iOSでは定期的にデータが消えることがあります。月1回ほどエクスポートしておくと安心です。</p>
+    <p style="font-size:13px;color:#718096;margin-bottom:12px;">念のため手動バックアップもできます。</p>
     <button class="btn btn-outline" id="export-btn">📥 データをエクスポート（JSON保存）</button>
     <label class="btn btn-outline" style="text-align:center;cursor:pointer;display:block;">
       📤 データをインポート（JSON読み込み）
@@ -245,7 +280,7 @@
 </div>
 
 <!-- ===== BOTTOM NAV ===== -->
-<nav class="bottom-nav">
+<nav class="bottom-nav" id="bottom-nav" style="display:none;">
   <button class="nav-btn active" data-screen="home">
     <span class="nav-icon">🏠</span>ホーム
   </button>
@@ -259,6 +294,11 @@
     <span class="nav-icon">⚙️</span>設定
   </button>
 </nav>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
 <script src="questions.js"></script>
 <script src="app.js"></script>
