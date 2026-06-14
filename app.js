@@ -131,7 +131,7 @@ function renderHome() {
   const catDiv = document.getElementById('cat-bars');
   catDiv.innerHTML = '';
   CATEGORIES.forEach(cat => {
-    const qs = QUESTIONS.filter(q => q.category === cat).map(q => q.id);
+    const qs = QUESTIONS.filter(q => q.cat === cat).map(q => q.id);
     const catHistory = d.history.flatMap(h => h.answers || []).filter(a => qs.includes(a.id));
     const cTotal = catHistory.length;
     const cCorrect = catHistory.filter(a => a.correct).length;
@@ -192,7 +192,7 @@ function startSession() {
     }
     pool.sort((a, b) => (d.wrongIds[b.id] || 0) - (d.wrongIds[a.id] || 0));
   } else if (selectedMode === 'cat') {
-    pool = QUESTIONS.filter(q => q.category === selectedCat);
+    pool = QUESTIONS.filter(q => q.cat === selectedCat);
   }
 
   pool = shuffle(pool).slice(0, selectedCount);
@@ -238,7 +238,7 @@ function renderQuestion() {
 
   document.getElementById('quiz-progress-text').textContent = `${s.current + 1} / ${total}`;
   document.getElementById('quiz-progress-fill').style.width = `${(s.current / total) * 100}%`;
-  document.getElementById('quiz-category-tag').textContent = q.category;
+  document.getElementById('quiz-category-tag').textContent = q.cat;
   document.getElementById('quiz-sub-tag').textContent = q.sub;
   document.getElementById('quiz-question').textContent = q.q;
 
@@ -280,7 +280,7 @@ function selectAnswer(idx) {
   document.getElementById('explanation-label').textContent = correct ? '✅ 解説' : '📖 解説（正解: ' + ['A','B','C','D'][q.ans] + '）';
   document.getElementById('explanation-text').textContent = q.exp;
 
-  s.answers.push({ id: q.id, correct, category: q.category });
+  s.answers.push({ id: q.id, correct, category: q.cat });
 
   const d = loadData();
   if (!correct) {
@@ -361,7 +361,7 @@ function finishSession() {
       if (!q) return;
       wDiv.innerHTML += `
         <div class="wrong-item">
-          <div class="wi-cat">${q.category} > ${q.sub}</div>
+          <div class="wi-cat">${q.cat} > ${q.sub}</div>
           <div class="wi-q">${q.q}</div>
           <div class="wi-ans">✅ 正解: ${'ABCD'[q.ans]}. ${q.opts[q.ans]}</div>
         </div>`;
@@ -390,7 +390,7 @@ async function getAIFeedback() {
 
   const wrongSummary = wrongAns.map(a => {
     const q = QUESTIONS.find(q => q.id === a.id);
-    return `【${q.category}・${q.sub}】${q.q}\n正解: ${q.opts[q.ans]}\n解説: ${q.exp}`;
+    return `【${q.cat}・${q.sub}】${q.q}\n正解: ${q.opts[q.ans]}\n解説: ${q.exp}`;
   }).join('\n\n');
 
   const box = document.getElementById('ai-feedback-box');
