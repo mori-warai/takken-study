@@ -1,10 +1,11 @@
-const CACHE = 'takken-v1';
+const CACHE = 'takken-v2';
 const ASSETS = [
   '/takken-study/',
   '/takken-study/index.html',
   '/takken-study/app.js',
   '/takken-study/style.css',
   '/takken-study/questions.js',
+  '/takken-study/flashcards.js',
   '/takken-study/manifest.json',
 ];
 

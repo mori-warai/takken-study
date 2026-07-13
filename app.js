@@ -16,6 +16,8 @@ const DEFAULT_DATA = {
   dailyGoal: 20,
   streakDays: 0,
   lastStudyDate: '',
+  cardMastered: {},
+  cardChecked: {},
 };
 
 // ===== STORAGE（localStorageをキャッシュ、Firestoreを正とする） =====
@@ -112,6 +114,199 @@ function showScreen(id) {
   if (id === 'home')     renderHome();
   if (id === 'history')  renderHistory();
   if (id === 'settings') renderSettings();
+  if (id === 'cards')    renderCardsScreen();
+}
+
+// ===== FLASHCARDS =====
+const CARD_CATEGORIES = [...new Set(FLASHCARDS.map(c => c.cat))];
+let cardFilterCat = 'all';
+let cardFilterReformOnly = false;
+let cardWeakOnly = false;
+let cardView = 'card';
+let cardPool = [];
+let cardIndex = 0;
+let cardFlipped = false;
+
+function initCardChips() {
+  const chipDiv = document.getElementById('card-cat-chips');
+  chipDiv.innerHTML = '';
+  const allChip = document.createElement('button');
+  allChip.className = 'chip selected';
+  allChip.textContent = '全科目';
+  allChip.dataset.cat = 'all';
+  chipDiv.appendChild(allChip);
+
+  CARD_CATEGORIES.forEach(cat => {
+    const c = document.createElement('button');
+    c.className = 'chip';
+    c.textContent = cat;
+    c.dataset.cat = cat;
+    chipDiv.appendChild(c);
+  });
+
+  const reformChip = document.createElement('button');
+  reformChip.className = 'chip reform-chip';
+  reformChip.textContent = '🆕 2026年法改正のみ';
+  reformChip.dataset.cat = 'reform';
+  chipDiv.appendChild(reformChip);
+
+  chipDiv.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.cat === 'reform') {
+        cardFilterReformOnly = !cardFilterReformOnly;
+        btn.classList.toggle('selected', cardFilterReformOnly);
+      } else {
+        cardFilterCat = btn.dataset.cat;
+        chipDiv.querySelectorAll('.chip:not(.reform-chip)').forEach(x => x.classList.remove('selected'));
+        btn.classList.add('selected');
+      }
+      rebuildCardPool();
+    });
+  });
+}
+
+function rebuildCardPool() {
+  let pool = [...FLASHCARDS];
+  if (cardFilterCat !== 'all') pool = pool.filter(c => c.cat === cardFilterCat);
+  if (cardFilterReformOnly) pool = pool.filter(c => c.reform);
+  if (cardWeakOnly) {
+    const d = loadData();
+    pool = pool.filter(c => !d.cardMastered[c.id]);
+  }
+  cardPool = pool;
+  cardIndex = 0;
+  cardFlipped = false;
+  if (cardView === 'card') renderFlashcard();
+  else renderChecklist();
+}
+
+function renderCardsScreen() {
+  initCardChips();
+  document.querySelectorAll('#card-view-toggle .mode-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.view === cardView);
+  });
+  document.getElementById('card-mode-view').style.display = cardView === 'card' ? 'block' : 'none';
+  document.getElementById('list-mode-view').style.display = cardView === 'list' ? 'block' : 'none';
+  cardFilterCat = 'all';
+  cardFilterReformOnly = false;
+  cardWeakOnly = false;
+  rebuildCardPool();
+}
+
+function renderFlashcard() {
+  const progressEl = document.getElementById('card-progress-text');
+  const flashcardEl = document.getElementById('flashcard');
+
+  if (cardPool.length === 0) {
+    progressEl.textContent = '該当するカードがありません';
+    document.getElementById('fc-front-text').textContent = '条件を変更してください';
+    document.getElementById('fc-front-tag').textContent = '';
+    document.getElementById('fc-back-text').textContent = '';
+    document.getElementById('fc-back-tag').textContent = '';
+    return;
+  }
+
+  const d = loadData();
+  const c = cardPool[cardIndex];
+  const masteredCount = cardPool.filter(x => d.cardMastered[x.id]).length;
+  progressEl.textContent = `${cardIndex + 1} / ${cardPool.length}　（このセット内 覚えた: ${masteredCount}）`;
+
+  flashcardEl.classList.remove('flipped');
+  cardFlipped = false;
+
+  const badges = (c.reform ? ' 🆕' : '') + (c.caution ? ' ⚠️' : '') + (d.cardMastered[c.id] ? ' ✅覚えた' : '');
+  document.getElementById('fc-front-tag').textContent = `${c.cat} > ${c.sub}${badges}`;
+  document.getElementById('fc-front-text').textContent = c.front;
+  document.getElementById('fc-back-tag').textContent = `${c.cat} > ${c.sub}${badges}`;
+  document.getElementById('fc-back-text').textContent = c.back;
+}
+
+function flipCard() {
+  if (cardPool.length === 0) return;
+  cardFlipped = !cardFlipped;
+  document.getElementById('flashcard').classList.toggle('flipped', cardFlipped);
+}
+
+function moveCard(delta) {
+  if (cardPool.length === 0) return;
+  cardIndex = (cardIndex + delta + cardPool.length) % cardPool.length;
+  renderFlashcard();
+}
+
+function setCardMastery(mastered) {
+  if (cardPool.length === 0) return;
+  const c = cardPool[cardIndex];
+  const d = loadData();
+  if (mastered) d.cardMastered[c.id] = true;
+  else delete d.cardMastered[c.id];
+  saveData(d);
+  moveCard(1);
+}
+
+function shuffleCards() {
+  cardPool = shuffle(cardPool);
+  cardIndex = 0;
+  renderFlashcard();
+}
+
+function toggleWeakOnly() {
+  cardWeakOnly = !cardWeakOnly;
+  const btn = document.getElementById('fc-weak-only-btn');
+  btn.classList.toggle('btn-accent', cardWeakOnly);
+  btn.classList.toggle('btn-outline', !cardWeakOnly);
+  rebuildCardPool();
+}
+
+function switchCardView(view) {
+  cardView = view;
+  document.querySelectorAll('#card-view-toggle .mode-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.view === view);
+  });
+  document.getElementById('card-mode-view').style.display = view === 'card' ? 'block' : 'none';
+  document.getElementById('list-mode-view').style.display = view === 'list' ? 'block' : 'none';
+  if (view === 'card') renderFlashcard();
+  else renderChecklist();
+}
+
+function renderChecklist() {
+  const d = loadData();
+  const container = document.getElementById('checklist-container');
+  container.innerHTML = '';
+
+  const checkedCount = cardPool.filter(c => d.cardChecked[c.id]).length;
+  document.getElementById('checklist-progress-text').textContent =
+    `暗記済み: ${checkedCount} / ${cardPool.length}`;
+
+  if (cardPool.length === 0) {
+    container.innerHTML = '<p style="text-align:center;color:#a0aec0;padding:20px;">該当するカードがありません</p>';
+    return;
+  }
+
+  cardPool.forEach(c => {
+    const checked = !!d.cardChecked[c.id];
+    const item = document.createElement('div');
+    item.className = 'checklist-item' + (checked ? ' checked' : '');
+    const badges =
+      (c.reform ? '<span class="cl-badge reform">🆕改正</span>' : '') +
+      (c.caution ? '<span class="cl-badge caution">⚠️要確認</span>' : '');
+    item.innerHTML = `
+      <input type="checkbox" ${checked ? 'checked' : ''} data-id="${c.id}">
+      <div class="cl-body">
+        <div class="cl-tag">${c.cat} > ${c.sub}${badges}</div>
+        <div class="cl-front">${c.front}</div>
+        <div class="cl-back">${c.back}</div>
+      </div>`;
+    item.querySelector('input').addEventListener('change', e => {
+      const dd = loadData();
+      if (e.target.checked) dd.cardChecked[c.id] = true;
+      else delete dd.cardChecked[c.id];
+      saveData(dd);
+      item.classList.toggle('checked', e.target.checked);
+      document.getElementById('checklist-progress-text').textContent =
+        `暗記済み: ${cardPool.filter(x => dd.cardChecked[x.id]).length} / ${cardPool.length}`;
+    });
+    container.appendChild(item);
+  });
 }
 
 // ===== HOME =====
@@ -550,6 +745,18 @@ window.addEventListener('DOMContentLoaded', () => {
   // Login
   document.getElementById('login-btn').addEventListener('click', signInWithGoogle);
   document.getElementById('logout-btn').addEventListener('click', signOut);
+
+  // Flashcards
+  document.getElementById('flashcard').addEventListener('click', flipCard);
+  document.getElementById('fc-prev-btn').addEventListener('click', () => moveCard(-1));
+  document.getElementById('fc-next-btn').addEventListener('click', () => moveCard(1));
+  document.getElementById('fc-mastered-btn').addEventListener('click', (e) => { e.stopPropagation(); setCardMastery(true); });
+  document.getElementById('fc-notyet-btn').addEventListener('click', (e) => { e.stopPropagation(); setCardMastery(false); });
+  document.getElementById('fc-shuffle-btn').addEventListener('click', shuffleCards);
+  document.getElementById('fc-weak-only-btn').addEventListener('click', toggleWeakOnly);
+  document.querySelectorAll('#card-view-toggle .mode-btn').forEach(b => {
+    b.addEventListener('click', () => switchCardView(b.dataset.view));
+  });
 
 
   // Service Worker

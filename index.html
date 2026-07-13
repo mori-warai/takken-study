@@ -186,6 +186,63 @@
 
 </div>
 
+<!-- ===== FLASHCARDS ===== -->
+<div id="screen-cards" class="screen pb-safe">
+
+  <div class="card">
+    <h2>🗂️ 暗記カード（全204項目）</h2>
+    <p style="font-size:12px;color:#718096;margin-bottom:12px;">数字・期限・許可権者など「そのまま覚える」項目だけを集めました。🆕は2026年（令和8年）法改正関連です。⚠️は税制改正等で最終数値未確定のため、試験直前に必ず公式情報をご確認ください。</p>
+    <div class="mode-grid" id="card-view-toggle">
+      <button class="mode-btn selected" data-view="card"><span class="mode-icon">🃏</span>カード形式</button>
+      <button class="mode-btn" data-view="list"><span class="mode-icon">✅</span>チェックリスト形式</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>科目で絞り込む</h2>
+    <div class="chip-row" id="card-cat-chips"></div>
+  </div>
+
+  <!-- カード形式 -->
+  <div id="card-mode-view">
+    <div class="card">
+      <div id="card-progress-text" style="font-size:12px;color:#718096;margin-bottom:10px;"></div>
+      <div class="flashcard" id="flashcard" tabindex="0">
+        <div class="flashcard-inner" id="flashcard-inner">
+          <div class="flashcard-face flashcard-front">
+            <div class="fc-tag" id="fc-front-tag"></div>
+            <div class="fc-text" id="fc-front-text"></div>
+            <div class="fc-hint">タップして答えを見る</div>
+          </div>
+          <div class="flashcard-face flashcard-back">
+            <div class="fc-tag" id="fc-back-tag"></div>
+            <div class="fc-text" id="fc-back-text"></div>
+          </div>
+        </div>
+      </div>
+      <div class="fc-btn-row">
+        <button class="btn btn-outline btn-sm" id="fc-prev-btn">← 前へ</button>
+        <button class="btn btn-danger btn-sm" id="fc-notyet-btn">まだ覚えていない</button>
+        <button class="btn btn-green btn-sm" id="fc-mastered-btn">覚えた ✓</button>
+        <button class="btn btn-outline btn-sm" id="fc-next-btn">次へ →</button>
+      </div>
+      <button class="btn btn-outline" id="fc-shuffle-btn" style="margin-top:10px;">🔀 シャッフル</button>
+      <button class="btn btn-outline" id="fc-weak-only-btn">🔴 未マスターのみ出題</button>
+    </div>
+  </div>
+
+  <!-- チェックリスト形式 -->
+  <div id="list-mode-view" style="display:none;">
+    <div class="card">
+      <div id="checklist-progress-text" style="font-size:13px;font-weight:700;color:#1e3a5f;margin-bottom:12px;"></div>
+      <div id="checklist-container"></div>
+    </div>
+  </div>
+
+  <button class="btn btn-outline" onclick="showScreen('home')">← ホームへ戻る</button>
+
+</div>
+
 <!-- ===== HISTORY ===== -->
 <div id="screen-history" class="screen pb-safe">
 
@@ -266,6 +323,9 @@
   <button class="nav-btn" data-screen="start">
     <span class="nav-icon">📝</span>学習する
   </button>
+  <button class="nav-btn" data-screen="cards">
+    <span class="nav-icon">🗂️</span>暗記カード
+  </button>
   <button class="nav-btn" data-screen="history">
     <span class="nav-icon">📊</span>履歴
   </button>
@@ -280,6 +340,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="questions.js"></script>
+<script src="flashcards.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
